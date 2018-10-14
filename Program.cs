@@ -9,21 +9,33 @@ using uPLibrary.Networking.M2Mqtt.Messages;
 
 namespace BlueRobotMqttGateway
 {
+   
     class Program
     {
+        private int xMin = -44;
+        private int xMax = 44;
+        private int yMax = 54;
+        private int yMin = -46;
+
+        private int zMax = -1;
+        private int zMin = -94;
 
         private const string MQTT_BROKER_ADDRESS = "blurerobotmqtt.northeurope.cloudapp.azure.com";
 
         private static Socket _socket;
 
+        private static Position currentPosition;
+        static MqttClient client;
+
         static void Main(string[] args)
         {
+            currentPosition = new Position(){X=0, Y=0, Z=0};
             string clientId = "BlueRobotSimulatorGateway"; 
             string password = "BlueRobotCompanyForTheWin_2018";
             var username = "service";
             
             // create client instance
-            MqttClient client = new MqttClient(MQTT_BROKER_ADDRESS);
+            client = new MqttClient(MQTT_BROKER_ADDRESS);
             
             // register to message received
             client.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
@@ -69,13 +81,24 @@ namespace BlueRobotMqttGateway
                Console.WriteLine(string.Format($"Received {messageid}"));
                Console.WriteLine(data);
 
+            if(messageid == "objectMoved")
+            {
+                var moved = JsonConvert.DeserializeObject<ObjectMoved>(data.ToString());
+                if(moved.Name == "robot")
+                {
+                    //Publish current position?
+                    //client.Publish("Blue");
+                    currentPosition.X = moved.X;
+                    currentPosition.Y = moved.Z;
+                    currentPosition.Z = moved.Y;
+                }
+            }
         }
 
         private static void HandleBlueRobotMessage(string messageid, string data)
         {
                Console.WriteLine(string.Format($"Received {messageid}:"));
                Console.WriteLine(data);
-
         }
 
         static void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
@@ -84,6 +107,7 @@ namespace BlueRobotMqttGateway
             {
                 // handle message received
                 var bytesAsString = Encoding.UTF8.GetString(e.Message);
+                
                 var command = JsonConvert.DeserializeObject<Command>(bytesAsString);
 
                 Console.WriteLine("Received command: ", command.ToString());
@@ -99,25 +123,48 @@ namespace BlueRobotMqttGateway
 
         private static void HandleCommand(Command command)
         {
-_socket.Connect();
+            _socket.Connect();
+            var position = new DevicePosition(){x = currentPosition.X, y = currentPosition.Y, z = currentPosition.Z};
+
             //fex. moveRobot 
             switch(command.Name)
             {
                 case "moveRobot":
-                    //_socket.Emit("moveRobot",  new { x= command.Value.X, y=command.Value.Y , z=command.Value.Z });
-
-                    _socket.Emit("moveRobot", JObject.FromObject(new { x= command.Value.X, y=command.Value.Y , z=command.Value.Z }));
+                    HandleMoveCommand(command);
                 break;
                 case "placeBox":
-                    _socket.Emit("placeBox", new { X= command.Value.X, Y=command.Value.Y , Z=command.Value.Z });
+                   _socket.Emit("placeBox",  JObject.FromObject(position));
                 break;
                 case "pickupBox":
-                    _socket.Emit("pickupBox", JObject.FromObject(new { x= command.Value.X, y=command.Value.Y , z=command.Value.Z }));
+                    _socket.Emit("pickupBox",  JObject.FromObject(position));
                 break;
                 default:
                 break;
             }
+        }
 
+        private static void HandleMoveCommand(Command command)
+        {
+            //Todo: position convert fixup?
+           var position = new DevicePosition(){x = currentPosition.X, y = currentPosition.Y, z = currentPosition.Z};
+
+             switch(command.Direction)
+            {
+                case "left":
+                position.x -= command.StepSize;
+                break;
+                case "up":
+                position.y -=  command.StepSize;
+                break;
+                case "right":
+                position.x +=  command.StepSize;         
+                break;
+                case "down":
+                position.y += command.StepSize;          
+                break;
+            }
+            
+             _socket.Emit("moveRobot", JObject.FromObject(position));
         }
     }
 }

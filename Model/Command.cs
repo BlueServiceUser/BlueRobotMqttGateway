@@ -5,6 +5,10 @@ namespace BlueRobotMqttGateway
         public string Name { get; set; }
 
         public Position Value { get; set; }
+
+
+        public string Direction { get; set; }
+        public int StepSize { get; set; }
     }
 
     public class Position
