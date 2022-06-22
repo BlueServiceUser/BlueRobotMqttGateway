@@ -8,7 +8,7 @@
   <ItemGroup>
     <PackageReference Include="EngineIoClientDotNet" Version="1.0.7" />
     <PackageReference Include="M2MqttDotnetCore" Version="1.0.8" />
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="SocketIoClientDotNet" Version="1.0.7.1" />
   </ItemGroup>
 
